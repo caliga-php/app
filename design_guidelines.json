@@ -1,0 +1,200 @@
+{
+  "app_name": "WISECP Admin",
+  "personality": "1 iOS-Native Clean (Adapted for high data-density B2B SaaS)",
+  "personality_one_liner": "A highly functional, corporate, and clean operations console prioritizing glanceability and precise data hierarchy over decorative elements.",
+  "color": {
+    "light": {
+      "surface": "#FFFFFF",
+      "onSurface": "#0F172A",
+      "surfaceSecondary": "#F8FAFC",
+      "onSurfaceSecondary": "#334155",
+      "surfaceTertiary": "#F1F5F9",
+      "onSurfaceTertiary": "#475569",
+      "surfaceInverse": "#0F172A",
+      "onSurfaceInverse": "#FFFFFF",
+      "brand": "#1B6FE3",
+      "onBrand": "#FFFFFF",
+      "brandPrimary": "#1B6FE3",
+      "onBrandPrimary": "#FFFFFF",
+      "brandSecondary": "#DBEAFE",
+      "onBrandSecondary": "#1E3A8A",
+      "brandTertiary": "#EFF6FF",
+      "onBrandTertiary": "#1D4ED8",
+      "success": "#10B981",
+      "onSuccess": "#FFFFFF",
+      "warning": "#F59E0B",
+      "onWarning": "#FFFFFF",
+      "error": "#EF4444",
+      "onError": "#FFFFFF",
+      "info": "#3B82F6",
+      "onInfo": "#FFFFFF",
+      "border": "#E2E8F0",
+      "borderStrong": "#CBD5E1",
+      "divider": "#F1F5F9",
+      "muted": "#64748B"
+    },
+    "dark": {
+      "surface": "#0F172A",
+      "onSurface": "#F8FAFC",
+      "surfaceSecondary": "#1E293B",
+      "onSurfaceSecondary": "#CBD5E1",
+      "surfaceTertiary": "#334155",
+      "onSurfaceTertiary": "#94A3B8",
+      "surfaceInverse": "#FFFFFF",
+      "onSurfaceInverse": "#0F172A",
+      "brand": "#3B82F6",
+      "onBrand": "#FFFFFF",
+      "brandPrimary": "#3B82F6",
+      "onBrandPrimary": "#FFFFFF",
+      "brandSecondary": "#1E3A8A",
+      "onBrandSecondary": "#BFDBFE",
+      "brandTertiary": "#172554",
+      "onBrandTertiary": "#93C5FD",
+      "success": "#059669",
+      "onSuccess": "#FFFFFF",
+      "warning": "#D97706",
+      "onWarning": "#FFFFFF",
+      "error": "#DC2626",
+      "onError": "#FFFFFF",
+      "info": "#2563EB",
+      "onInfo": "#FFFFFF",
+      "border": "#334155",
+      "borderStrong": "#475569",
+      "divider": "#1E293B",
+      "muted": "#94A3B8"
+    }
+  },
+  "typography": {
+    "displayFontFamily": "Inter",
+    "textFontFamily": "Inter",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Use tight, purposeful spacing for data-dense lists (sm/md), but generous spacing at screen roots and major section breaks (lg/xl) to avoid clutter.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": "1",
+  "navigation": "bottom_tabs",
+  "icon_set": "Phosphor",
+  "glassmorphism": {
+    "enabled": "true",
+    "do's": [
+      "Use subtle glass effect on the bottom tab bar and sticky headers over long scrolling lists (Clients, Invoices)."
+    ],
+    "dont's": [
+      "Do not use glass on data cards, KPI items, or list rows. Data readability is the absolute priority."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "haptics": {
+    "events": {
+      "primary_button_press": "impactMedium",
+      "tab_change": "selection",
+      "pull_to_refresh": "impactLight",
+      "status_change": "notificationSuccess",
+      "error_state": "notificationError"
+    }
+  },
+  "screens": [
+    {
+      "name": "Connect Panel (Login)",
+      "purpose": "Securely connect the mobile app to the WISECP panel via URL and API key.",
+      "states": {
+        "loading": "Connecting and verifying API key...",
+        "empty": "N/A",
+        "error": "Connection failed. Please check the URL, API key, and network status."
+      },
+      "layout": "Full-bleed background image with a gradient-to-dark scrim. A floating glass card at the center/bottom contains inputs for Panel URL and API Key, plus a 'Connect' primary CTA. Includes biometric/PIN setup step after successful connection."
+    },
+    {
+      "name": "Dashboard",
+      "purpose": "Provide an immediate overview of business health with actionable KPIs.",
+      "states": {
+        "loading": "Skeleton grids for KPI cards.",
+        "empty": "No active data available for this period.",
+        "error": "Failed to load dashboard metrics. Pull to refresh."
+      },
+      "layout": "Bento-grid style KPI cards at the top (Unpaid Invoices, Pending Orders, Open Tickets). Below, horizontal scrollable lists or compact summary rows for recent activity. Cards use `surfaceSecondary` with `border` 1pt to separate metrics clearly."
+    },
+    {
+      "name": "Clients",
+      "purpose": "Manage and search the customer base efficiently.",
+      "states": {
+        "loading": "Skeleton list rows.",
+        "empty": "No clients found matching the search criteria.",
+        "error": "Failed to load clients. Pull to refresh."
+      },
+      "layout": "Sticky header with search bar and horizontal scrolling filter chips (Active, Suspended, High Trust). Flat list of client rows. Each row shows Name, Company, Status Pill, and Credit Balance. Pull to refresh and infinite scroll enabled."
+    },
+    {
+      "name": "Client Detail",
+      "purpose": "Deep dive into a specific client's profile, financials, and services.",
+      "states": {
+        "loading": "Skeleton view of profile header.",
+        "empty": "Client data unavailable.",
+        "error": "Failed to load client details."
+      },
+      "layout": "Header section displaying name, initials avatar, and a Trust Score badge. Tabbed or segmented control layout below to switch between Overview (Revenue, Credit, Status), Services, Invoices, and Orders. High-density key-value pairs for metadata."
+    },
+    {
+      "name": "Orders & Invoices",
+      "purpose": "Track provisioning and billing status.",
+      "states": {
+        "loading": "Skeleton list rows.",
+        "empty": "No invoices/orders in this category.",
+        "error": "Failed to fetch records."
+      },
+      "layout": "List-heavy view with status badges (Paid, Unpaid, Pending, Cancelled) prominently displayed on the right edge of each row. Detail screens show line items in a dedicated bordered card and a sticky bottom CTA for 'Mark as Paid' or 'Process Order'."
+    }
+  ],
+  "images": {
+    "login_background": {
+      "url": "https://images.unsplash.com/photo-1600531529272-023c4b821f14?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwxfHxtaW5pbWFsaXN0JTIwYmx1ZSUyMG9mZmljZSUyMGJ1aWxkaW5nJTIwbW9kZXJuJTIwYXJjaGl0ZWN0dXJlfGVufDB8fHx8MTc5MTIyMDk1MHww&ixlib=rb-4.1.0&q=85",
+      "dark": "https://images.unsplash.com/photo-1644088379091-d574269d422f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGJsdWUlMjBkYXRhJTIwbmV0d29yayUyMHRlY2hub2xvZ3klMjBiYWNrZ3JvdW5kfGVufDB8fHx8MTc5MTIyMDk1MHww&ixlib=rb-4.1.0&q=85",
+      "alt": "Abstract blue corporate architecture/technology network background"
+    },
+    "empty_state_desk": {
+      "url": "https://images.unsplash.com/photo-1449247709967-d4461a6a6103?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwxfHxtaW5pbWFsaXN0JTIwZW1wdHklMjBkZXNrJTIwb2ZmaWNlJTIwY2xlYW58ZW58MHx8fHwxNzkxMjIwOTUwfDA&ixlib=rb-4.1.0&q=85",
+      "dark": "https://images.unsplash.com/photo-1510851896000-498520af2236?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHwxfHxkYXJrJTIwbWluaW1hbGlzdCUyMGVtcHR5JTIwZGVzayUyMG9mZmljZSUyMGNsZWFuJTIwbmlnaHR8ZW58MHx8fHwxNzkxMjIwOTU4fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Minimalist empty office desk representing no data"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Follow '1 iOS-Native Clean' structure but adjust for B2B data density. Use 1pt borders to define cards instead of heavy shadows.",
+    "Implement both Light and Dark mode using the provided palette. The brand color (#1B6FE3) is specifically requested by the user for WISECP integration.",
+    "Status badges (Active, Suspended, Paid, Unpaid) are critical. Use the defined semantic colors (success, warning, error, info) paired with 'onBrandSecondary' / 'brandTertiary' background tints for pills.",
+    "Ensure infinite scroll and pull-to-refresh are implemented on Clients, Orders, and Invoices list screens.",
+    "Do not use generic 'blue' for decorative elements—restrict the brand blue strictly to primary CTAs, active states, and focus elements to maintain a professional SaaS look.",
+    "For the login screen, overlay the background image with a vertical gradient scrim (transparent to surfaceInverse) to ensure the login card and text remain perfectly readable.",
+    "KPI cards should use a Bento-grid layout: 2-column or 3-column depending on the metric importance. Avoid 48% width orphans; use flexWrap with 'space-between'."
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only read-only testing of WISECP Admin mobile app (Expo web preview, mobile viewport 390x844) against live panel https://vexa.net.tr. All core read flows verified end-to-end: Connect (success + invalid key error), Dashboard KPIs with real values, Son Müşteriler/Son Faturalar lists, pull-to-refresh wiring, Müşteriler tab (search + 4 filter chips + list), Client Detail (summary, trust score, info card, status pill, back button), Finans tab segmented (invoices/orders) with filter chips and both detail screens (Fatura #5 shows amount header, Özet, Ara Toplam, Vergi, Toplam, Ödeme, Vade, Müşteri link, Kalemler; Sipariş shows amount header, Sipariş Bilgisi, Fatura link, Kalemler, Hizmetler), Diğer tab (aktif panel kartı, paneller listesi, lock-toggle açıp kapatma). No write/destructive actions executed. No red screens, no runtime errors. Minor non-blocking console warnings observed (shadow* styles deprecated, props.pointerEvents deprecated, useNativeDriver web fallback) — standard RN-web warnings.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "RN-web styles", "issue": "Console warning: \"shadow*\" style props are deprecated. Use \"boxShadow\". Harmless on native but noisy on web. Reference: usage of shadow* in several StyleSheet.create blocks (e.g., /app/frontend/app/(tabs)/clients.tsx FAB style and other primitives)."},
+      {"component": "RN-web props", "issue": "Console warning: props.pointerEvents is deprecated, use style.pointerEvents. Likely coming from a dependency (keyboard-controller / lucide / RN internals). Non-blocking."}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "(Optional) Replace deprecated shadow* StyleSheet props with boxShadow where feasible for RN-web compatibility, or ignore (works on native).",
+    "(Awareness) In Expo Router (web), previously visited tab screens remain mounted in the DOM, so duplicate testIDs (e.g., client-row-2, invoice-row-5) may coexist across routes. On native this is not an issue. Future test scripts should scope selectors to the currently visible screen (filter by visible/bbox) to avoid picking hidden duplicates."
+  ],
+  "critical_code_review_comments": [
+    "Dashboard (/app/frontend/app/(tabs)/index.tsx) and Clients tab both render ClientRow with the same testID derived from client.id. Not a bug per se, but combined with Expo Router's web behavior (previous screens remain mounted), it leads to duplicate data-testid in the DOM — consider prefixing testID with context (e.g., 'dash-client-row-X' vs 'clients-list-row-X') if automated web tests are a priority.",
+    "Billing invoice/order lists similarly reuse testIDs (invoice-row-{id}, order-row-{id}) that also appear on Dashboard. Same note as above."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "100%"},
+  "seed_data_creation": "None. Only read calls to live panel.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Web preview session is non-persistent (expo-secure-store not supported on web) — always run Connect first with URL=https://vexa.net.tr and key=wak_rEQHyEtqkbS8xStvS3ApjycTNutHnFmW. Do NOT submit new-client-submit, disconnect-button/confirm-disconnect, confirm-remove-profile — live production panel. Lock toggle is safe. When testing row clicks after tab switch, locate the visible row (previous screens remain mounted on web, so duplicates may exist); use bounding_box/is_visible to disambiguate. The dashboard click paths for client-row-2 and invoice-row-* were verified to open /client/{id} and /invoice/{id} with full data, as were segment switches on Finans and lock-toggle on Diğer.",
+  "rca_of_issue": "n/a — no app bugs discovered. Initial failure to open client/invoice detail from the respective tab was a test-script artifact: on Expo Router web, Dashboard screen's DOM stays mounted after tab switch, so Playwright found the hidden Dashboard copy of client-row-2/invoice-row-5 first and clicked that. Clicking the Dashboard-visible row (or scoping to visible nodes) opens the detail correctly. Verified: /client/2 renders status pill + Özet + Güven Skoru + Bilgiler + header-back-button; /invoice/5 renders ₺108,00 amount header, Özet, Ara Toplam, Vergi, Toplam, Ödeme, Müşteri link, Kalemler."
+}
