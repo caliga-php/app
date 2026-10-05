@@ -1,13 +1,31 @@
-import { useLocalSearchParams } from "expo-router";
-import { ScrollView, Text, View } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ban, FileText, Pencil, Play, ServerCog, SlidersHorizontal, XCircle } from "lucide-react-native";
+import { useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useClient, useClientSummary, useCurrencyCode } from "@/src/api/hooks";
+import { messageForError } from "@/src/api/errors";
+import {
+  useClient,
+  useClientCredits,
+  useClientNotes,
+  useClientServiceAction,
+  useClientSummary,
+  useCreateClientNote,
+  useCurrencyCode,
+  useRemindClientInvoices,
+  useSetClientBlock,
+} from "@/src/api/hooks";
 import { formatDateTime, formatMoney, initials, trustScoreLabel } from "@/src/lib/format";
+import { useAuth } from "@/src/store/connection";
 import { fontSize, makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { TextField } from "@/src/ui/Input";
+import { LinkRow } from "@/src/ui/detail";
+import { ActionList, Sheet, type SheetAction } from "@/src/ui/Sheet";
 import { Header, Screen } from "@/src/ui/Screen";
-import { Avatar, Card, FieldRow, SectionTitle, StatusPill } from "@/src/ui/primitives";
+import { Avatar, Button, Card, FieldRow, SectionTitle, StatusPill } from "@/src/ui/primitives";
 import { ErrorState, LoadingState } from "@/src/ui/states";
+import { useToast } from "@/src/ui/Toast";
 
 const BADGE_LABELS: Record<string, string> = {
   loyal: "Sadık Müşteri",
@@ -21,11 +39,34 @@ export default function ClientDetail() {
   const styles = useStyles();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const toast = useToast();
+  const { can } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const codeOf = useCurrencyCode();
 
   const client = useClient(id);
   const summary = useClientSummary(id);
+  const notes = useClientNotes(id);
+  const credits = useClientCredits(id);
+  const block = useSetClientBlock(id);
+  const remind = useRemindClientInvoices(id);
+  const svcAction = useClientServiceAction(id);
+  const addNote = useCreateClientNote(id);
+
+  const [sheet, setSheet] = useState(false);
+  const [noteSheet, setNoteSheet] = useState(false);
+  const [noteText, setNoteText] = useState("");
+
+  const act = async (fn: () => Promise<unknown>, label: string) => {
+    setSheet(false);
+    try {
+      await fn();
+      toast.show(`${label} başarılı`, "success");
+    } catch (e) {
+      toast.show(messageForError(e), "error");
+    }
+  };
 
   if (client.isLoading) {
     return (
@@ -47,10 +88,41 @@ export default function ClientDetail() {
   const c = client.data;
   const s = summary.data;
   const badges = s?.badges ? Object.entries(s.badges).filter(([, v]) => v) : [];
+  const isBlocked = c.status === "blocked";
+
+  const actions: SheetAction[] = [];
+  if (can("Clients/UpdateClient"))
+    actions.push({ label: "Düzenle", icon: Pencil, testID: "act-edit", onPress: () => { setSheet(false); router.push(`/client/edit?id=${id}`); } });
+  if (can("Clients/SetClientBlock"))
+    actions.push({
+      label: isBlocked ? "Engeli Kaldır" : "Engelle",
+      icon: Ban,
+      tone: isBlocked ? "success" : "warning",
+      testID: "act-block",
+      onPress: () => act(() => block.mutateAsync(!isBlocked), isBlocked ? "Engel kaldırma" : "Engelleme"),
+    });
+  if (can("Clients/RemindClientInvoices"))
+    actions.push({ label: "Fatura Hatırlat", icon: FileText, testID: "act-remind", onPress: () => act(() => remind.mutateAsync(), "Hatırlatma") });
+  if (can("Clients/SuspendClientServices"))
+    actions.push({ label: "Hizmetleri Askıya Al", icon: Ban, tone: "warning", testID: "act-suspend", onPress: () => act(() => svcAction.mutateAsync("suspend"), "Askıya alma") });
+  if (can("Clients/UnsuspendClientServices"))
+    actions.push({ label: "Hizmetleri Yeniden Aç", icon: Play, tone: "success", testID: "act-unsuspend", onPress: () => act(() => svcAction.mutateAsync("unsuspend"), "Yeniden açma") });
+  if (can("Clients/CancelClientServices"))
+    actions.push({ label: "Hizmetleri İptal Et", icon: XCircle, tone: "error", testID: "act-cancel", onPress: () => act(() => svcAction.mutateAsync("cancel"), "İptal") });
 
   return (
     <Screen>
-      <Header title="Müşteri Detayı" back />
+      <Header
+        title="Müşteri Detayı"
+        back
+        right={
+          actions.length ? (
+            <Pressable onPress={() => setSheet(true)} hitSlop={10} testID="client-actions-button">
+              <SlidersHorizontal size={22} color={colors.onSurface} />
+            </Pressable>
+          ) : undefined
+        }
+      />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing["2xl"] }]} showsVerticalScrollIndicator={false}>
         {/* Profile header */}
         <View style={styles.profile}>
@@ -133,7 +205,97 @@ export default function ClientDetail() {
             <FieldRow label="Son Giriş" value={formatDateTime(c.last_login_at)} />
           </Card>
         </View>
+
+        {/* Services link */}
+        {can("Services/GetServices") ? (
+          <View style={styles.section}>
+            <SectionTitle title="Hizmetler" />
+            <Card>
+              <LinkRow
+                title="Hizmetleri Görüntüle"
+                subtitle={s ? `${s.active_services ?? 0} aktif · ${s.inactive_services ?? 0} pasif` : undefined}
+                right={<ServerCog size={18} color={colors.muted} />}
+                onPress={() => router.push(`/services?client_id=${id}`)}
+              />
+            </Card>
+          </View>
+        ) : null}
+
+        {/* Credits */}
+        {can("Clients/GetClientCredits") && credits.data && credits.data.length ? (
+          <View style={styles.section}>
+            <SectionTitle title="Kredi Hareketleri" />
+            <Card>
+              {credits.data.map((cr) => (
+                <FieldRow
+                  key={cr.id}
+                  label={`${cr.type === "up" ? "+" : "-"} ${cr.description || "Kredi"}`}
+                  value={formatMoney(cr.amount, codeOf(cr.currency_id))}
+                />
+              ))}
+            </Card>
+          </View>
+        ) : null}
+
+        {/* Notes */}
+        {can("Clients/GetClientNotes") ? (
+          <View style={styles.section}>
+            <SectionTitle
+              title="Notlar"
+              action={
+                can("Clients/CreateClientNote") ? (
+                  <Text style={styles.addNote} onPress={() => setNoteSheet(true)} testID="add-note-button">
+                    + Not Ekle
+                  </Text>
+                ) : undefined
+              }
+            />
+            <Card>
+              {notes.data && notes.data.length ? (
+                notes.data.map((n) => (
+                  <FieldRow key={n.id} label={formatDateTime(n.created_at)} value={n.note ?? n.message} />
+                ))
+              ) : (
+                <Text style={styles.emptyNote}>Henüz not yok.</Text>
+              )}
+            </Card>
+          </View>
+        ) : null}
       </ScrollView>
+
+      <Sheet visible={sheet} onClose={() => setSheet(false)} title="Müşteri İşlemleri">
+        <ActionList actions={actions} />
+      </Sheet>
+
+      <Sheet visible={noteSheet} onClose={() => setNoteSheet(false)} title="Not Ekle">
+        <TextField
+          placeholder="Not metni..."
+          value={noteText}
+          onChangeText={setNoteText}
+          multiline
+          testID="note-input"
+          style={{ minHeight: 80 }}
+        />
+        <View style={{ marginTop: spacing.md }}>
+          <Button
+            label="Kaydet"
+            onPress={async () => {
+              if (!noteText.trim()) return;
+              try {
+                await addNote.mutateAsync(noteText.trim());
+                setNoteText("");
+                setNoteSheet(false);
+                toast.show("Not eklendi", "success");
+              } catch (e) {
+                toast.show(messageForError(e), "error");
+              }
+            }}
+            loading={addNote.isPending}
+            full
+            testID="note-save-button"
+          />
+        </View>
+      </Sheet>
     </Screen>
   );
 }
@@ -216,5 +378,15 @@ const useStyles = makeStyles((colors) => ({
     color: colors.muted,
     fontSize: fontSize.lg,
     fontWeight: "600",
+  },
+  addNote: {
+    color: colors.brandPrimary,
+    fontSize: fontSize.base,
+    fontWeight: "700",
+  },
+  emptyNote: {
+    color: colors.muted,
+    fontSize: fontSize.base,
+    paddingVertical: spacing.xs,
   },
 }));

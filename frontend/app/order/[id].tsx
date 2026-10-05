@@ -1,22 +1,37 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ScrollView, Text, View } from "react-native";
+import { BadgeCheck, SlidersHorizontal, Trash2 } from "lucide-react-native";
+import { useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useCurrencyCode, useOrder } from "@/src/api/hooks";
-import { formatDateTime, formatMoney } from "@/src/lib/format";
-import { fontSize, makeStyles, spacing } from "@/src/theme";
+import { messageForError } from "@/src/api/errors";
+import { useCurrencyCode, useOrder, useOrderAction } from "@/src/api/hooks";
+import { formatDateTime, formatMoney, statusLabel } from "@/src/lib/format";
+import { useAuth } from "@/src/store/connection";
+import { fontSize, makeStyles, spacing, useTheme } from "@/src/theme";
+import { ActionList, Sheet, type SheetAction } from "@/src/ui/Sheet";
 import { Header, Screen } from "@/src/ui/Screen";
 import { Card, FieldRow, SectionTitle, StatusPill } from "@/src/ui/primitives";
 import { ErrorState, LoadingState } from "@/src/ui/states";
 import { AmountHeader, LinkRow } from "@/src/ui/detail";
+import { useToast } from "@/src/ui/Toast";
+
+const ORDER_STATUSES = ["pending", "active", "completed", "cancelled"];
 
 export default function OrderDetail() {
   const styles = useStyles();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const toast = useToast();
+  const { can } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const codeOf = useCurrencyCode();
   const order = useOrder(id);
+  const orderAction = useOrderAction(id);
+  const [sheet, setSheet] = useState(false);
+  const [statusSheet, setStatusSheet] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (order.isLoading) {
     return (
@@ -38,9 +53,25 @@ export default function OrderDetail() {
   const o = order.data;
   const code = codeOf(o.currency_id);
 
+  const actions: SheetAction[] = [];
+  if (can("Orders/UpdateOrderStatus"))
+    actions.push({ label: "Durumu Değiştir", icon: BadgeCheck, testID: "ord-status", onPress: () => { setSheet(false); setStatusSheet(true); } });
+  if (can("Orders/DeleteOrder"))
+    actions.push({ label: "Siparişi Sil", icon: Trash2, tone: "error", testID: "ord-delete", onPress: () => { setSheet(false); setConfirmDelete(true); } });
+
   return (
     <Screen>
-      <Header title={`Sipariş #${o.order_number}`} back />
+      <Header
+        title={`Sipariş #${o.order_number}`}
+        back
+        right={
+          actions.length ? (
+            <Pressable onPress={() => setSheet(true)} hitSlop={10} testID="order-actions-button">
+              <SlidersHorizontal size={22} color={colors.onSurface} />
+            </Pressable>
+          ) : undefined
+        }
+      />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing["2xl"] }]} showsVerticalScrollIndicator={false}>
         <AmountHeader amount={formatMoney(o.amount, code)} status={o.status} />
 
@@ -111,6 +142,55 @@ export default function OrderDetail() {
           </View>
         ) : null}
       </ScrollView>
+
+      <Sheet visible={sheet} onClose={() => setSheet(false)} title="Sipariş İşlemleri">
+        <ActionList actions={actions} />
+      </Sheet>
+
+      <Sheet visible={statusSheet} onClose={() => setStatusSheet(false)} title="Durum Seç">
+        <ActionList
+          actions={ORDER_STATUSES.map((st) => ({
+            label: statusLabel(st),
+            testID: `ord-status-${st}`,
+            tone: o.status === st ? "info" : undefined,
+            onPress: async () => {
+              setStatusSheet(false);
+              try {
+                await orderAction.setStatus.mutateAsync(st);
+                toast.show("Durum güncellendi", "success");
+              } catch (e) {
+                toast.show(messageForError(e), "error");
+              }
+            },
+          }))}
+        />
+      </Sheet>
+
+      <Sheet visible={confirmDelete} onClose={() => setConfirmDelete(false)} title="Siparişi sil">
+        <Text style={{ color: colors.onSurfaceSecondary, marginBottom: spacing.md }}>
+          #{o.order_number} numaralı siparişi silmek üzeresiniz. Bu işlem geri alınamaz.
+        </Text>
+        <ActionList
+          actions={[
+            {
+              label: "Evet, sil",
+              icon: Trash2,
+              tone: "error",
+              testID: "ord-confirm-delete",
+              onPress: async () => {
+                setConfirmDelete(false);
+                try {
+                  await orderAction.remove.mutateAsync();
+                  toast.show("Sipariş silindi", "success");
+                  router.back();
+                } catch (e) {
+                  toast.show(messageForError(e), "error");
+                }
+              },
+            },
+          ]}
+        />
+      </Sheet>
     </Screen>
   );
 }

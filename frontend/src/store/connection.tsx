@@ -56,7 +56,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   // Bootstrap from storage.
   useEffect(() => {
     (async () => {
-      const saved = (await storage.getItem<PanelProfile[]>(PROFILES_KEY, [])) ?? [];
+      const saved = ((await storage.getItem(PROFILES_KEY, [] as any)) as PanelProfile[] | null) ?? [];
       const activeId = await storage.getItem<string>(ACTIVE_KEY, "");
       const lock = (await storage.getItem<boolean>(LOCK_KEY, false)) ?? false;
       setProfiles(saved);
@@ -99,7 +99,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   async function persistProfiles(next: PanelProfile[]) {
     setProfiles(next);
-    await storage.setItem(PROFILES_KEY, next);
+    await storage.setItem(PROFILES_KEY, next as any);
   }
 
   async function connect(rawUrl: string, key: string) {

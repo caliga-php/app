@@ -123,6 +123,7 @@ export interface ServiceListItem {
   client?: ClientRef;
   due_at?: string;
   renewal_at?: string;
+  created_at?: string;
 }
 
 export interface TicketStats {
@@ -203,4 +204,56 @@ export interface TicketStatusDef {
 export interface Priority {
   value: number;
   label: string;
+}
+
+export interface ServiceDetail extends ServiceListItem {
+  product_id?: number;
+  order_id?: number;
+  invoice_id?: number;
+  total_amount?: number;
+  period?: string;
+  period_time?: number;
+  is_overdue?: boolean;
+  product?: { id: number; title: string; type?: string; module?: string };
+  server?: unknown;
+  order?: { id: number; number: number | string; status: string };
+  options?: Record<string, unknown>;
+  capabilities?: {
+    has_module?: boolean;
+    can_suspend?: boolean;
+    can_unsuspend?: boolean;
+    can_cancel?: boolean;
+    can_reinstall?: boolean;
+    can_change_password?: boolean;
+  };
+}
+
+export interface ClientNote {
+  id: number;
+  note?: string;
+  message?: string;
+  added_by?: number | string;
+  created_at?: string;
+}
+
+export interface ClientAddress {
+  id: number;
+  full_name?: string;
+  label?: string;
+  type?: string;
+  email?: string;
+  phone?: string;
+  country_code?: string;
+  address?: string;
+  zipcode?: string;
+  is_default?: boolean;
+}
+
+export interface ClientCredit {
+  id: number;
+  type: string;
+  amount: number;
+  currency_id?: number;
+  description?: string;
+  created_at?: string;
 }

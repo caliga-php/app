@@ -11,8 +11,11 @@ import {
 import { apiRequest, idempotencyKey } from "./client";
 import { ApiError } from "./errors";
 import type {
+  ClientAddress,
+  ClientCredit,
   ClientDetail,
   ClientListItem,
+  ClientNote,
   ClientsStats,
   ClientSummary,
   Currency,
@@ -21,6 +24,7 @@ import type {
   InvoiceStats,
   OrderListItem,
   Priority,
+  ServiceDetail,
   ServiceListItem,
   TicketDetail,
   TicketListItem,
@@ -159,7 +163,7 @@ export function useUpdateClient(id: number | string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: Record<string, unknown>) =>
-      (await apiRequest<ClientDetail>(`/clients/${id}`, { method: "PUT", body, idempotencyKey: idempotencyKey() }))
+      (await apiRequest<ClientDetail>(`/clients/${id}`, { method: "PATCH", body, idempotencyKey: idempotencyKey() }))
         .data,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["client", String(id)] });
@@ -174,7 +178,7 @@ export function useSetClientBlock(id: number | string) {
     mutationFn: async (blocked: boolean) =>
       (
         await apiRequest(`/clients/${id}/block`, {
-          method: "POST",
+          method: "PUT",
           body: { blocked },
           idempotencyKey: idempotencyKey(),
         })
@@ -349,11 +353,156 @@ export function useUpdateTicket(id: number | string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: Record<string, unknown>) =>
-      (await apiRequest(`/tickets/${id}`, { method: "PUT", body, idempotencyKey: idempotencyKey() })).data,
+      (await apiRequest(`/tickets/${id}`, { method: "PATCH", body, idempotencyKey: idempotencyKey() })).data,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["ticket", String(id)] });
       qc.invalidateQueries({ queryKey: ["tickets"] });
       qc.invalidateQueries({ queryKey: ["ticket-stats"] });
     },
   });
+}
+
+/* --------------------- Client sub-resources & actions --------------------- */
+
+export function useClientNotes(id: number | string) {
+  return useQuery({
+    queryKey: ["client-notes", String(id)],
+    queryFn: async () => (await apiRequest<ClientNote[]>(`/clients/${id}/notes`)).data,
+    retry,
+    enabled: !!id,
+  });
+}
+
+export function useClientAddresses(id: number | string) {
+  return useQuery({
+    queryKey: ["client-addresses", String(id)],
+    queryFn: async () => (await apiRequest<ClientAddress[]>(`/clients/${id}/addresses`)).data,
+    retry,
+    enabled: !!id,
+  });
+}
+
+export function useClientCredits(id: number | string) {
+  return useQuery({
+    queryKey: ["client-credits", String(id)],
+    queryFn: async () => (await apiRequest<ClientCredit[]>(`/clients/${id}/credits`)).data,
+    retry,
+    enabled: !!id,
+  });
+}
+
+export function useCreateClientNote(id: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (note: string) =>
+      (await apiRequest(`/clients/${id}/notes`, { method: "POST", body: { note }, idempotencyKey: idempotencyKey() })).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["client-notes", String(id)] }),
+  });
+}
+
+// Bulk client-service actions (POST /clients/{id}/services/{action}).
+export function useClientServiceAction(id: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (action: "suspend" | "unsuspend" | "cancel") =>
+      (await apiRequest(`/clients/${id}/services/${action}`, { method: "POST", body: {}, idempotencyKey: idempotencyKey() })).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["client", String(id)] });
+      qc.invalidateQueries({ queryKey: ["services"] });
+      qc.invalidateQueries({ queryKey: ["clients-stats"] });
+    },
+  });
+}
+
+export function useRemindClientInvoices(id: number | string) {
+  return useMutation({
+    mutationFn: async () =>
+      (await apiRequest(`/clients/${id}/remind-invoices`, { method: "POST", body: {}, idempotencyKey: idempotencyKey() })).data,
+  });
+}
+
+/* ------------------------------ Service detail & actions ------------------------------ */
+
+export function useService(id: number | string) {
+  return useQuery({
+    queryKey: ["service", String(id)],
+    queryFn: async () => (await apiRequest<ServiceDetail>(`/services/${id}`)).data,
+    retry,
+    enabled: !!id,
+  });
+}
+
+export function useServiceAction(id: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (action: "suspend" | "unsuspend" | "cancel" | "reinstall") =>
+      (await apiRequest(`/services/${id}/${action}`, { method: "POST", body: {}, idempotencyKey: idempotencyKey() })).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["service", String(id)] });
+      qc.invalidateQueries({ queryKey: ["services"] });
+    },
+  });
+}
+
+export function useServiceRenewalInvoice(id: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () =>
+      (await apiRequest(`/services/${id}/renewal-invoice`, { method: "POST", body: {}, idempotencyKey: idempotencyKey() })).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["invoices"] }),
+  });
+}
+
+/* ------------------------------ Invoice actions ------------------------------ */
+
+export function useInvoiceAction(id: number | string) {
+  const qc = useQueryClient();
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["invoice", String(id)] });
+    qc.invalidateQueries({ queryKey: ["invoices"] });
+    qc.invalidateQueries({ queryKey: ["invoice-stats"] });
+  };
+  return {
+    setStatus: useMutation({
+      mutationFn: async (status: string) =>
+        (await apiRequest(`/invoices/${id}/status`, { method: "PUT", body: { status }, idempotencyKey: idempotencyKey() })).data,
+      onSuccess: invalidate,
+    }),
+    addPayment: useMutation({
+      mutationFn: async (body: { amount: number; payment_method?: string; description?: string }) =>
+        (await apiRequest(`/invoices/${id}/payments`, { method: "POST", body, idempotencyKey: idempotencyKey() })).data,
+      onSuccess: invalidate,
+    }),
+    remind: useMutation({
+      mutationFn: async () =>
+        (await apiRequest(`/invoices/${id}/remind`, { method: "POST", body: {}, idempotencyKey: idempotencyKey() })).data,
+    }),
+    formalize: useMutation({
+      mutationFn: async () =>
+        (await apiRequest(`/invoices/${id}/formalize`, { method: "POST", body: {}, idempotencyKey: idempotencyKey() })).data,
+      onSuccess: invalidate,
+    }),
+  };
+}
+
+/* ------------------------------ Order actions ------------------------------ */
+
+export function useOrderAction(id: number | string) {
+  const qc = useQueryClient();
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["order", String(id)] });
+    qc.invalidateQueries({ queryKey: ["orders"] });
+    qc.invalidateQueries({ queryKey: ["orders-count"] });
+  };
+  return {
+    setStatus: useMutation({
+      mutationFn: async (status: string) =>
+        (await apiRequest(`/orders/${id}/status`, { method: "PUT", body: { status }, idempotencyKey: idempotencyKey() })).data,
+      onSuccess: invalidate,
+    }),
+    remove: useMutation({
+      mutationFn: async () => (await apiRequest(`/orders/${id}`, { method: "DELETE" })).data,
+      onSuccess: invalidate,
+    }),
+  };
 }

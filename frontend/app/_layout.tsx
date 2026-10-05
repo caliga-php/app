@@ -31,8 +31,11 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="client/[id]" />
         <Stack.Screen name="client/new" options={{ presentation: "modal" }} />
+        <Stack.Screen name="client/edit" options={{ presentation: "modal" }} />
         <Stack.Screen name="order/[id]" />
         <Stack.Screen name="invoice/[id]" />
+        <Stack.Screen name="services/index" />
+        <Stack.Screen name="service/[id]" />
         <Stack.Screen name="tickets/index" />
         <Stack.Screen name="ticket/[id]" />
       </Stack>

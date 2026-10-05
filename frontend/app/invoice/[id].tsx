@@ -1,22 +1,41 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ScrollView, Text, View } from "react-native";
+import { BadgeCheck, Bell, CreditCard, SlidersHorizontal } from "lucide-react-native";
+import { useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useCurrencyCode, useInvoice } from "@/src/api/hooks";
-import { formatDateTime, formatMoney } from "@/src/lib/format";
-import { fontSize, makeStyles, spacing } from "@/src/theme";
+import { messageForError } from "@/src/api/errors";
+import { useCurrencyCode, useInvoice, useInvoiceAction } from "@/src/api/hooks";
+import { formatDateTime, formatMoney, statusLabel } from "@/src/lib/format";
+import { useAuth } from "@/src/store/connection";
+import { fontSize, makeStyles, spacing, useTheme } from "@/src/theme";
+import { TextField } from "@/src/ui/Input";
+import { ActionList, Sheet, type SheetAction } from "@/src/ui/Sheet";
 import { Header, Screen } from "@/src/ui/Screen";
-import { Card, FieldRow, SectionTitle, StatusPill } from "@/src/ui/primitives";
+import { Button, Card, FieldRow, SectionTitle, StatusPill } from "@/src/ui/primitives";
 import { ErrorState, LoadingState } from "@/src/ui/states";
 import { AmountHeader, LinkRow } from "@/src/ui/detail";
+import { useToast } from "@/src/ui/Toast";
+
+const INVOICE_STATUSES = ["paid", "unpaid", "cancelled", "refund", "collections"];
 
 export default function InvoiceDetail() {
   const styles = useStyles();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const toast = useToast();
+  const { can } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const codeOf = useCurrencyCode();
   const invoice = useInvoice(id);
+  const invAction = useInvoiceAction(id);
+
+  const [sheet, setSheet] = useState(false);
+  const [statusSheet, setStatusSheet] = useState(false);
+  const [paySheet, setPaySheet] = useState(false);
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethod, setPayMethod] = useState("");
 
   if (invoice.isLoading) {
     return (
@@ -38,9 +57,39 @@ export default function InvoiceDetail() {
   const inv = invoice.data;
   const code = codeOf(inv.currency_id);
 
+  const run = async (fn: () => Promise<unknown>, label: string) => {
+    setSheet(false);
+    try {
+      await fn();
+      toast.show(`${label} başarılı`, "success");
+    } catch (e) {
+      toast.show(messageForError(e), "error");
+    }
+  };
+
+  const actions: SheetAction[] = [];
+  if (can("Invoices/UpdateInvoiceStatus"))
+    actions.push({ label: "Durumu Değiştir", icon: BadgeCheck, testID: "inv-status", onPress: () => { setSheet(false); setStatusSheet(true); } });
+  if (can("Invoices/AddInvoicePayment"))
+    actions.push({ label: "Ödeme Ekle", icon: CreditCard, tone: "success", testID: "inv-payment", onPress: () => { setSheet(false); setPayAmount(String(inv.balance ?? inv.total ?? "")); setPaySheet(true); } });
+  if (can("Invoices/RemindInvoice"))
+    actions.push({ label: "Hatırlatma Gönder", icon: Bell, testID: "inv-remind", onPress: () => run(() => invAction.remind.mutateAsync(), "Hatırlatma") });
+  if (can("Invoices/FormalizeInvoice") && !inv.formalized)
+    actions.push({ label: "Resmileştir", icon: BadgeCheck, testID: "inv-formalize", onPress: () => run(() => invAction.formalize.mutateAsync(), "Resmileştirme") });
+
   return (
     <Screen>
-      <Header title={`Fatura ${inv.number}`} back />
+      <Header
+        title={`Fatura ${inv.number}`}
+        back
+        right={
+          actions.length ? (
+            <Pressable onPress={() => setSheet(true)} hitSlop={10} testID="invoice-actions-button">
+              <SlidersHorizontal size={22} color={colors.onSurface} />
+            </Pressable>
+          ) : undefined
+        }
+      />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing["2xl"] }]} showsVerticalScrollIndicator={false}>
         <AmountHeader amount={formatMoney(inv.total, code)} status={inv.status} />
 
@@ -106,6 +155,56 @@ export default function InvoiceDetail() {
           </View>
         ) : null}
       </ScrollView>
+
+      <Sheet visible={sheet} onClose={() => setSheet(false)} title="Fatura İşlemleri">
+        <ActionList actions={actions} />
+      </Sheet>
+
+      <Sheet visible={statusSheet} onClose={() => setStatusSheet(false)} title="Durum Seç">
+        <ActionList
+          actions={INVOICE_STATUSES.map((st) => ({
+            label: statusLabel(st),
+            testID: `inv-status-${st}`,
+            tone: inv.status === st ? "info" : undefined,
+            onPress: async () => {
+              setStatusSheet(false);
+              try {
+                await invAction.setStatus.mutateAsync(st);
+                toast.show("Durum güncellendi", "success");
+              } catch (e) {
+                toast.show(messageForError(e), "error");
+              }
+            },
+          }))}
+        />
+      </Sheet>
+
+      <Sheet visible={paySheet} onClose={() => setPaySheet(false)} title="Ödeme Ekle">
+        <View style={{ gap: spacing.md }}>
+          <TextField label="Tutar" value={payAmount} onChangeText={setPayAmount} keyboardType="decimal-pad" testID="pay-amount" />
+          <TextField label="Ödeme Yöntemi" value={payMethod} onChangeText={setPayMethod} placeholder="Örn. Havale" testID="pay-method" />
+          <Button
+            label="Ödemeyi Kaydet"
+            onPress={async () => {
+              const amount = parseFloat(payAmount.replace(",", "."));
+              if (!amount || amount <= 0) {
+                toast.show("Geçerli bir tutar girin", "error");
+                return;
+              }
+              try {
+                await invAction.addPayment.mutateAsync({ amount, payment_method: payMethod || undefined });
+                setPaySheet(false);
+                toast.show("Ödeme eklendi", "success");
+              } catch (e) {
+                toast.show(messageForError(e), "error");
+              }
+            }}
+            loading={invAction.addPayment.isPending}
+            full
+            testID="pay-submit"
+          />
+        </View>
+      </Sheet>
     </Screen>
   );
 }

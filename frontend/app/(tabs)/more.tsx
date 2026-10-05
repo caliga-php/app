@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { CircleUser, ChevronRight, KeyRound, LifeBuoy, LogOut, Plus, ShieldCheck, Trash2 } from "lucide-react-native";
+import { CircleUser, ChevronRight, KeyRound, LifeBuoy, LogOut, Plus, ServerCog, ShieldCheck, Trash2 } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -61,15 +61,24 @@ export default function More() {
         </View>
 
         {/* Management */}
-        {can("Tickets/GetTickets") ? (
+        {can("Tickets/GetTickets") || can("Services/GetServices") ? (
           <>
             <Text style={styles.sectionLabel}>Yönetim</Text>
             <View style={styles.listCard}>
-              <Pressable style={styles.navRow} onPress={() => router.push("/tickets")} testID="nav-tickets">
-                <LifeBuoy size={20} color={colors.onSurfaceSecondary} />
-                <Text style={styles.navLabel}>Destek Talepleri</Text>
-                <ChevronRight size={18} color={colors.muted} />
-              </Pressable>
+              {can("Tickets/GetTickets") ? (
+                <Pressable style={styles.navRow} onPress={() => router.push("/tickets")} testID="nav-tickets">
+                  <LifeBuoy size={20} color={colors.onSurfaceSecondary} />
+                  <Text style={styles.navLabel}>Destek Talepleri</Text>
+                  <ChevronRight size={18} color={colors.muted} />
+                </Pressable>
+              ) : null}
+              {can("Services/GetServices") ? (
+                <Pressable style={[styles.navRow, styles.navBorder]} onPress={() => router.push("/services")} testID="nav-services">
+                  <ServerCog size={20} color={colors.onSurfaceSecondary} />
+                  <Text style={styles.navLabel}>Hizmetler</Text>
+                  <ChevronRight size={18} color={colors.muted} />
+                </Pressable>
+              ) : null}
             </View>
           </>
         ) : null}
@@ -282,6 +291,10 @@ const useStyles = makeStyles((colors) => ({
     color: colors.onSurface,
     fontSize: fontSize.base,
     fontWeight: "600",
+  },
+  navBorder: {
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
   },
   switchRow: {
     flexDirection: "row",

@@ -19,22 +19,25 @@ WISECP Admin API'sine bağlanır (ara sunucu yok). Dil: Türkçe. Tema: WISECP m
 - Tüm endpoint'ler canlı doğrulandı (docs/endpoint-inventory.md). Endpoint uydurulmadı.
 
 ## Implemented (2026-10-05)
-- Çekirdek: Connect ekranı, oturum kalıcılığı, auto-connect, izin sistemi, app lock, çoklu panel.
-- Dashboard: 6 KPI (müşteri, aktif hizmet, ödenmemiş fatura, kredi bakiyesi, açık talep, sipariş),
-  ödenmemiş banner, son müşteriler, son faturalar, pull-to-refresh.
-- Müşteriler: liste (arama + durum filtresi, sonsuz kaydırma), detay (özet, güven skoru, rozetler,
-  bilgiler), yeni müşteri oluşturma (POST /clients, full_name zorunlu).
-- Finans: Faturalar + Siparişler segmenti, durum filtreleri, detaylar (kalemler, ödemeler, hizmetler).
-- Destek Talepleri: filtreli liste, detay (mesaj thread'i), Yanıt gönderme, Dahili Not ekleme,
-  durum + öncelik değiştirme.
-- Diğer: aktif panel, panel yönetimi, uygulama kilidi, bağlantıyı kes.
+- Çekirdek: Connect, oturum kalıcılığı, auto-connect, izin sistemi (wildcard), app lock, çoklu panel.
+- **Tam endpoint kaydı** (`src/api/endpoints.ts`): Clients, Services, Orders, Invoices, Tickets,
+  Financial, Notifications, Reference ailelerinin resmi yolları (method+path+permission) tek dosyada.
+- Dashboard: 6 KPI, ödenmemiş banner, son müşteriler/faturalar, pull-to-refresh.
+- Müşteriler: liste (arama+filtre+sonsuz kaydırma), detay (özet, güven skoru, rozetler, bilgiler,
+  **krediler, notlar+ekle, hizmetler linki**), **işlem menüsü** (düzenle, engelle/kaldır, fatura
+  hatırlat, hizmetleri askıya al/aç/iptal), yeni müşteri oluştur, **düzenle (PATCH)**.
+- Hizmetler: liste + detay, **yetenek-bazlı işlemler** (askıya al/aç/yeniden kur/iptal/yenileme faturası).
+- Finans: Faturalar + Siparişler. Fatura işlemleri (**durum değiştir, ödeme ekle, hatırlat, resmileştir**).
+  Sipariş işlemleri (**durum değiştir, sil**).
+- Destek Talepleri: filtreli liste, detay (mesaj thread'i), yanıt + dahili not, durum+öncelik değiştir.
+- Diğer: aktif panel, Yönetim (Destek Talepleri, Hizmetler), panel yönetimi, app lock, bağlantıyı kes.
 
 ## Backlog (öncelikli)
-- P1: Hizmetler (Services) modülü — liste/detay, askıya al/aç/iptal, yenileme.
-- P1: Müşteri işlemleri — düzenle (PUT), engelle/engeli kaldır, hizmet askıya alma (cihazda doğrula).
-- P2: Bilgi Bankası, Web Sitesi, Ayarlar, Araçlar, Otomasyon, Personel, Diller, Modüller.
-- P2: Yeni ticket oluşturma, ek dosya, atama değiştirme.
-- P2: Polling tabanlı yerel bildirim (yeni ticket/yanıt), SSL pinning, i18n.
+- P1: Müşteri alt kaynakları UI (adresler CRUD, alt kullanıcılar, kartlar, whois, GDPR, belgeler).
+- P1: Hizmet alt kaynakları (addon, domain DNS/nameserver, upgrade/downgrade, metrikler, araçlar).
+- P2: Faturalandırma (kuponlar, kurlar, vergi), Bildirim şablonları, yeni sipariş/fatura/ticket oluşturma.
+- P2: Polling tabanlı yerel bildirim, SSL pinning, i18n.
+- Not: Tüm bu alanların endpoint'leri `endpoints.ts`'te kayıtlı ve `apiRequest(buildPath(...))` ile çağrılabilir; UI kademeli ekleniyor.
 
 ## Notes
 - expo-secure-store web'de çalışmaz (web önizlemede oturum reload'da kaybolur) — gerçek cihazda kalıcı.

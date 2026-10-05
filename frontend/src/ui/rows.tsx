@@ -90,9 +90,14 @@ export function OrderRow({ item }: { item: OrderListItem }) {
 
 export function ServiceRow({ item }: { item: ServiceListItem }) {
   const styles = useStyles();
+  const router = useRouter();
   const codeOf = useCurrencyCode();
   return (
-    <View style={styles.row} testID={`service-row-${item.id}`}>
+    <Pressable
+      onPress={() => router.push(`/service/${item.id}`)}
+      testID={`service-row-${item.id}`}
+      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+    >
       <View style={styles.main}>
         <Text style={styles.title} numberOfLines={1}>
           {item.name}
@@ -105,7 +110,7 @@ export function ServiceRow({ item }: { item: ServiceListItem }) {
         <Text style={styles.amount}>{formatMoney(item.amount, codeOf(item.currency_id))}</Text>
         <StatusPill status={item.status} />
       </View>
-    </View>
+    </Pressable>
   );
 }
 
